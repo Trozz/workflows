@@ -1,0 +1,51 @@
+name: dependency-track
+on:
+  workflow_call:
+    secrets:
+      SECRET_OWASP_DT_URL:
+        required: true
+      SECRET_OWASP_DT_KEY:
+        required: true
+  workflow_dispatch:
+jobs:
+  dependencytrack:
+    name: Dependency Track
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      - uses: anchore/sbom-action@v0
+        id: sbom
+        with:
+          format: "cyclonedx-json"
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: ${{ github.event.repository.name }}-dependencytrack-sbom.cyclonedx.json
+
+      - uses: neerajsu/dependency-track-gh-action@v1.0.4
+        if: github.event_name == 'pull_request'
+        with:
+          serverHostBaseUrl: '${{ secrets.SECRET_OWASP_DT_URL }}'
+          apikey: ${{ secrets.SECRET_OWASP_DT_KEY }}
+          projectname: ${{ github.event.repository.name }}
+          projectversion: ${{ steps.extract_branch.outputs.branch }}
+          bomfilePath: ${{ github.event.repository.name }}-dependencytrack-sbom.cyclonedx.json
+          autocreate: 'true'
+          prNumber: ${{ github.event.pull_request.number }}
+          timeoutInSecs: '30'
+
+      - uses: neerajsu/dependency-track-gh-action@v1.0.4
+        if: github.event_name != 'pull_request'
+        with:
+          serverHostBaseUrl: '${{ secrets.SECRET_OWASP_DT_URL }}'
+          apikey: ${{ secrets.SECRET_OWASP_DT_KEY }}
+          projectname: ${{ github.event.repository.name }}
+          projectversion: ${{ steps.extract_branch.outputs.branch }}
+          bomfilePath: ${{ github.event.repository.name }}-dependencytrack-sbom.cyclonedx.json
+          autocreate: 'true'
+          failOnSeverityLevel: 'CRITICAL'
+          timeoutInSecs: '30'

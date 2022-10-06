@@ -1,0 +1,44 @@
+name: sonarqube
+on:
+  workflow_call:
+    inputs:
+      sonar_projectkey:
+        required: true
+        type: string
+    secrets:
+      SONAR_TOKEN:
+        required: true
+      SONAR_HOST_URL:
+        required: true
+
+  workflow_dispatch:
+jobs:
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - name: use Node.js 16
+        uses: actions/setup-node@v3
+        with:
+          node-version:  16.x
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: npm install
+        run: npm install
+        
+      - uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ inputs.sonar_projectkey }}
+
+      # - uses: sonarsource/sonarqube-quality-gate-action@master
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+ 
+      # - name: "show SonarQube Quality Gate Status value"
+      #   run: echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
